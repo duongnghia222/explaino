@@ -11,6 +11,7 @@ export function ExplainTreeSidebar() {
   const navigate = useNavigate()
 
   const handleNew = () => {
+    useExplainStore.getState().reset()
     navigate("/explain")
   }
 

@@ -14,6 +14,7 @@ interface ExplainState {
   setActiveNode: (id: string) => void
   loadTree: (nodeId: string) => Promise<void>
   getAncestorPath: (nodeId: string) => ExplainNode[]
+  reset: () => void
 }
 
 function flattenTree(node: ExplainNode, map: Record<string, ExplainNode>) {
@@ -106,6 +107,10 @@ export const useExplainStore = create<ExplainState>((set, get) => ({
       set({ loading: false, error: (e as Error).message })
       throw e
     }
+  },
+
+  reset: () => {
+    set({ nodes: {}, rootId: null, activeNodeId: null, tree: null, loading: false, error: null })
   },
 
   getAncestorPath: (nodeId: string) => {
