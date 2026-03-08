@@ -2,18 +2,17 @@
 
 from __future__ import annotations
 
-import json
 import logging
 from typing import Any
 from uuid import uuid4
 
+from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Send
-from openai import OpenAIError
 
-from src.config import settings
 from src.models.course import ContentBlock
-from src.services.ai_client import AIServiceError, client
+from src.models.llm_responses import AdvancedCoursePlanResponse, ResearchPlanResponse
+from src.services.ai_client import AIServiceError, chat_model
 from src.services.search_service import web_search
 
 from .state import AdvancedCourseState, report_progress
@@ -29,31 +28,24 @@ async def generate_research_plan(state: AdvancedCourseState) -> dict[str, Any]:
 
     system_prompt = (
         "You are a research planner. Given a topic, generate 4-6 specific search queries "
-        "that would help create a comprehensive, expert-level course. Return JSON with a "
-        'single key "queries" containing an array of search query strings.\n\n'
+        "that would help create a comprehensive, expert-level course. Respond in JSON format.\n\n"
         "Make queries specific and varied - cover fundamentals, recent developments, "
         "key debates, practical applications, and advanced concepts."
     )
 
     try:
-        response = await client.chat.completions.create(
-            model=settings.openrouter_model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"Generate research queries for a course about: {state['topic']}"},
+        structured = chat_model.with_structured_output(
+            ResearchPlanResponse, method="json_mode"
+        )
+        result = await structured.ainvoke(
+            [
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=f"Generate research queries for a course about: {state['topic']}"),
             ],
-            response_format={"type": "json_object"},
-            temperature=0.5,
+            config={"configurable": {"temperature": 0.5}},
         )
 
-        content = response.choices[0].message.content
-        if not content:
-            return {"research_queries": [state["topic"]]}
-
-        data = json.loads(content)
-        queries = data.get("queries", [state["topic"]])
-        if not queries:
-            queries = [state["topic"]]
+        queries = result.queries if result.queries else [state["topic"]]
 
         await report_progress(state, "researching", "Searching for sources...", 15)
         return {"research_queries": queries}
@@ -123,58 +115,45 @@ async def synthesize_course(state: AdvancedCourseState) -> dict[str, Any]:
 
     system_prompt = (
         "You are an expert course creator synthesizing research into a comprehensive course. "
-        "You have access to research sources numbered [1], [2], etc.\n\n"
-        "Return your response as JSON with these keys:\n"
-        '- "title": authoritative course title (string)\n'
-        '- "description": expert-level course description (string)\n'
-        '- "lessons": array of 4-6 lesson objects, each with:\n'
-        '  - "title": precise lesson title (string)\n'
-        '  - "content": detailed expert-level content in markdown with inline citations like [1], [2] (string)\n'
-        '  - "cited_sources": array of source index numbers used in this lesson (integers)\n'
-        '  - "key_points": array of 3-5 key takeaways (strings)\n'
-        '  - "quiz": array of 2-3 quiz question objects, each with:\n'
-        '    - "question": challenging expert-level question (string)\n'
-        '    - "options": array of 4 answer options (strings)\n'
-        '    - "correct_index": index of the correct option (0-3)\n'
-        '    - "explanation": detailed explanation with source references (string)\n\n'
+        "You have access to research sources numbered [1], [2], etc. "
+        "Respond in JSON format matching this EXACT schema:\n\n"
+        '{"title": "...", "description": "...", "lessons": [{"title": "...", '
+        '"content": "detailed markdown with [N] citations...", '
+        '"cited_sources": [1, 2], '
+        '"key_points": ["..."], '
+        '"quiz": [{"question": "...", "options": ["A","B","C","D"], "correct_index": 0, "explanation": "..."}]'
+        "}]}\n\n"
         "Style: Expert-level, research-backed, dense content with proper citations. "
         "Use technical terminology. Include nuanced analysis and multiple perspectives. "
-        "Reference sources inline using [N] notation."
+        "Reference sources inline using [N] notation.\n\n"
+        "Generate 4-6 lessons. Each lesson should have detailed expert-level markdown content "
+        "with inline citations, a list of cited source numbers, 3-5 key takeaways, "
+        "and 2-3 challenging quiz questions with 4 options each.\n\n"
+        "IMPORTANT: Use exactly the field names shown above (title, content, key_points, quiz, etc.)."
     )
 
     try:
-        response = await client.chat.completions.create(
-            model=settings.openrouter_model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {
-                    "role": "user",
-                    "content": (
+        structured = chat_model.with_structured_output(
+            AdvancedCoursePlanResponse, method="json_mode"
+        )
+        result = await structured.ainvoke(
+            [
+                SystemMessage(content=system_prompt),
+                HumanMessage(
+                    content=(
                         f"Create an expert-level course about: {state['topic']}\n\n"
                         f"## Research Sources\n{state['research_context']}"
                     ),
-                },
+                ),
             ],
-            response_format={"type": "json_object"},
-            temperature=0.5,
+            config={"configurable": {"temperature": 0.5}},
         )
 
-        content = response.choices[0].message.content
-        if content is None:
-            raise AIServiceError("Empty response from AI")
+        return {"raw_data": result.model_dump()}
 
-        data = json.loads(content)
-        if "title" not in data or "lessons" not in data:
-            raise AIServiceError("Missing required fields in AI response")
-
-        return {"raw_data": data}
-
-    except OpenAIError as exc:
-        logger.error("OpenRouter API error: %s", exc)
-        raise AIServiceError(f"OpenRouter API error: {exc}") from exc
-    except json.JSONDecodeError as exc:
-        logger.error("Failed to parse AI response: %s", exc)
-        raise AIServiceError("Invalid JSON in AI response") from exc
+    except Exception as exc:
+        logger.error("Course synthesis failed: %s", exc)
+        raise AIServiceError(f"Course synthesis failed: {exc}") from exc
 
 
 async def assemble_course(state: AdvancedCourseState) -> dict[str, Any]:

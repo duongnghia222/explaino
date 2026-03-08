@@ -2,17 +2,16 @@
 
 from __future__ import annotations
 
-import json
 import logging
 from typing import Any
 
+from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Send
-from openai import OpenAIError
 
-from src.config import settings
 from src.models.course import ContentBlock, ImageBlock
-from src.services.ai_client import AIServiceError, client
+from src.models.llm_responses import KidsCoursePlanResponse
+from src.services.ai_client import AIServiceError, chat_model
 from src.services.image_service import generate_images
 
 from .state import KidsCourseState, report_progress
@@ -21,22 +20,19 @@ logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = (
     "You are a friendly teacher creating a fun storybook-style course for kids ages 5-10. "
-    "Return your response as JSON with these keys:\n"
-    '- "title": fun, exciting course title (string)\n'
-    '- "description": brief exciting description (string)\n'
-    '- "lessons": array of 4-6 lesson objects, each with:\n'
-    '  - "title": fun lesson title (string)\n'
-    '  - "text_blocks": array of 3-5 short text blocks (2-3 sentences each, simple language)\n'
-    '  - "image_prompts": array of 2-3 objects with "prompt" (detailed image description for generation) and "alt_text" (short description)\n'
-    '  - "key_points": array of 3 simple takeaways (strings)\n'
-    '  - "quiz": array of 2 quiz question objects, each with:\n'
-    '    - "question": simple question (string)\n'
-    '    - "options": array of 3 answer options (strings, not 4)\n'
-    '    - "correct_index": index of the correct option (0-2)\n'
-    '    - "explanation": friendly explanation (string)\n\n'
+    "Respond in JSON format matching this EXACT schema:\n\n"
+    '{"title": "...", "description": "...", "lessons": [{"title": "...", '
+    '"text_blocks": ["short paragraph 1", "short paragraph 2"], '
+    '"image_prompts": [{"prompt": "...", "alt_text": "..."}], '
+    '"key_points": ["..."], '
+    '"quiz": [{"question": "...", "options": ["A","B","C"], "correct_index": 0, "explanation": "..."}]'
+    "}]}\n\n"
     "Style: Use very simple words, short sentences, fun analogies, and emoji. "
     "Make it feel like a colorful storybook adventure! Each text block should be "
-    "between images, like a picture book."
+    "between images, like a picture book.\n\n"
+    "Generate 4-6 lessons. Each lesson should have 3-5 short text blocks (2-3 sentences each), "
+    "2-3 image prompts, 3 simple takeaways, and 2 quiz questions with 3 options each.\n\n"
+    "IMPORTANT: Use exactly the field names shown above (title, text_blocks, key_points, quiz, etc.)."
 )
 
 
@@ -49,32 +45,22 @@ async def plan_course(state: KidsCourseState) -> dict[str, Any]:
     try:
         await report_progress(state, "generating", "Writing your storybook lessons...", 25)
 
-        response = await client.chat.completions.create(
-            model=settings.openrouter_model,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": f"Create a fun kids course about: {state['topic']}"},
+        structured = chat_model.with_structured_output(
+            KidsCoursePlanResponse, method="json_mode"
+        )
+        result = await structured.ainvoke(
+            [
+                SystemMessage(content=SYSTEM_PROMPT),
+                HumanMessage(content=f"Create a fun kids course about: {state['topic']}"),
             ],
-            response_format={"type": "json_object"},
-            temperature=0.8,
+            config={"configurable": {"temperature": 0.8}},
         )
 
-        content = response.choices[0].message.content
-        if content is None:
-            raise AIServiceError("Empty response from AI")
+        return {"raw_data": result.model_dump()}
 
-        data = json.loads(content)
-        if "title" not in data or "lessons" not in data:
-            raise AIServiceError("Missing required fields in AI response")
-
-        return {"raw_data": data}
-
-    except OpenAIError as exc:
-        logger.error("OpenRouter API error: %s", exc)
-        raise AIServiceError(f"OpenRouter API error: {exc}") from exc
-    except json.JSONDecodeError as exc:
-        logger.error("Failed to parse AI response: %s", exc)
-        raise AIServiceError("Invalid JSON in AI response") from exc
+    except Exception as exc:
+        logger.error("Kids course planning failed: %s", exc)
+        raise AIServiceError(f"Kids course planning failed: {exc}") from exc
 
 
 async def process_lesson(state: KidsCourseState) -> dict[str, Any]:

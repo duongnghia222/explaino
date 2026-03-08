@@ -11,7 +11,7 @@ from uuid import uuid4
 
 from src.config import settings
 from src.models.course import ImageBlock
-from src.services.ai_client import client
+from src.services.ai_client import image_client as client
 
 logger = logging.getLogger(__name__)
 

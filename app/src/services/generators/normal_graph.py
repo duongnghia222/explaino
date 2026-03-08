@@ -2,17 +2,16 @@
 
 from __future__ import annotations
 
-import json
 import logging
 from typing import Any
 
+from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Send
-from openai import OpenAIError
 
-from src.config import settings
 from src.models.course import ContentBlock, ImageBlock
-from src.services.ai_client import AIServiceError, client
+from src.models.llm_responses import NormalCoursePlanResponse
+from src.services.ai_client import AIServiceError, chat_model
 from src.services.image_service import generate_images
 
 from .state import NormalCourseState, report_progress
@@ -21,21 +20,19 @@ logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = (
     "You are an expert course creator. Generate a structured course on the "
-    "given topic. Return your response as JSON with these keys:\n"
-    '- "title": course title (string)\n'
-    '- "description": brief course description (string)\n'
-    '- "lessons": array of 4-6 lesson objects, each with:\n'
-    '  - "title": lesson title (string)\n'
-    '  - "content": detailed lesson content in markdown (string)\n'
-    '  - "image_prompts": array of 0-2 objects with "prompt" (description for diagram/illustration) and "alt_text" (short description). Only include if a visual would genuinely help understanding.\n'
-    '  - "key_points": array of 3-5 key takeaways (strings)\n'
-    '  - "quiz": array of 2-3 quiz question objects, each with:\n'
-    '    - "question": the question (string)\n'
-    '    - "options": array of 4 answer options (strings)\n'
-    '    - "correct_index": index of the correct option (0-3)\n'
-    '    - "explanation": why the correct answer is right (string)\n\n'
+    "given topic. Respond in JSON format matching this EXACT schema:\n\n"
+    '{"title": "...", "description": "...", "lessons": [{"title": "...", '
+    '"content": "detailed markdown...", '
+    '"image_prompts": [{"prompt": "...", "alt_text": "..."}], '
+    '"key_points": ["..."], '
+    '"quiz": [{"question": "...", "options": ["A","B","C","D"], "correct_index": 0, "explanation": "..."}]'
+    "}]}\n\n"
     "Style: Clear, standard language suitable for a general adult audience. "
-    "Balance depth with accessibility. University-level educational content."
+    "Balance depth with accessibility. University-level educational content.\n\n"
+    "Generate 4-6 lessons. Each lesson should have detailed markdown content, "
+    "0-2 image prompts (only if a visual would genuinely help understanding), "
+    "3-5 key takeaways, and 2-3 quiz questions with 4 options each.\n\n"
+    "IMPORTANT: Use exactly the field names shown above (title, content, key_points, quiz, etc.)."
 )
 
 
@@ -48,32 +45,22 @@ async def plan_course(state: NormalCourseState) -> dict[str, Any]:
     try:
         await report_progress(state, "generating", "Writing course content...", 25)
 
-        response = await client.chat.completions.create(
-            model=settings.openrouter_model,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": f"Create a course about: {state['topic']}"},
+        structured = chat_model.with_structured_output(
+            NormalCoursePlanResponse, method="json_mode"
+        )
+        result = await structured.ainvoke(
+            [
+                SystemMessage(content=SYSTEM_PROMPT),
+                HumanMessage(content=f"Create a course about: {state['topic']}"),
             ],
-            response_format={"type": "json_object"},
-            temperature=0.7,
+            config={"configurable": {"temperature": 0.7}},
         )
 
-        content = response.choices[0].message.content
-        if content is None:
-            raise AIServiceError("Empty response from AI")
+        return {"raw_data": result.model_dump()}
 
-        data = json.loads(content)
-        if "title" not in data or "lessons" not in data:
-            raise AIServiceError("Missing required fields in AI response")
-
-        return {"raw_data": data}
-
-    except OpenAIError as exc:
-        logger.error("OpenRouter API error: %s", exc)
-        raise AIServiceError(f"OpenRouter API error: {exc}") from exc
-    except json.JSONDecodeError as exc:
-        logger.error("Failed to parse AI response: %s", exc)
-        raise AIServiceError("Invalid JSON in AI response") from exc
+    except Exception as exc:
+        logger.error("Course planning failed: %s", exc)
+        raise AIServiceError(f"Course planning failed: {exc}") from exc
 
 
 async def process_lesson(state: NormalCourseState) -> dict[str, Any]:
