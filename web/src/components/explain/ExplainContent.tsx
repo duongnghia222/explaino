@@ -1,6 +1,7 @@
 import { useRef } from "react"
 
 import type { ExplainNode } from "@/types/explain"
+import { Markdown } from "@/components/ui/markdown"
 import { SelectionPopover } from "./SelectionPopover"
 
 interface ExplainContentProps {
@@ -15,7 +16,7 @@ export function ExplainContent({ node }: ExplainContentProps) {
       <h2 className="text-2xl font-bold">{node.text}</h2>
 
       <div ref={explanationRef} className="relative text-base leading-relaxed">
-        {node.explanation}
+        <Markdown>{node.explanation}</Markdown>
         <SelectionPopover containerRef={explanationRef} parentId={node.id} />
       </div>
     </div>

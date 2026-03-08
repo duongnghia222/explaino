@@ -4,6 +4,7 @@ import { useCourseStore } from "@/store/useCourseStore"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
+import { Markdown } from "@/components/ui/markdown"
 import { LessonQuiz } from "./LessonQuiz"
 
 interface LessonContentProps {
@@ -33,15 +34,7 @@ export function LessonContent({ course }: LessonContentProps) {
           <h1 className="text-3xl font-bold tracking-tight">{lesson.title}</h1>
         </div>
 
-        <div className="space-y-4">
-          {lesson.content.split("\n").map((paragraph, i) =>
-            paragraph.trim() ? (
-              <p key={i} className="leading-7">
-                {paragraph}
-              </p>
-            ) : null
-          )}
-        </div>
+        <Markdown>{lesson.content}</Markdown>
 
         {lesson.key_points.length > 0 && (
           <div className="space-y-3">
@@ -49,7 +42,7 @@ export function LessonContent({ course }: LessonContentProps) {
             <ul className="list-disc space-y-1.5 pl-6">
               {lesson.key_points.map((point, i) => (
                 <li key={i} className="leading-7">
-                  {point}
+                  <Markdown className="inline">{point}</Markdown>
                 </li>
               ))}
             </ul>

@@ -27,6 +27,7 @@ class AIServiceError(Exception):
 async def generate_explanation(
     text: str,
     context: str | None = None,
+    parent_text: str | None = None,
     parent_explanation: str | None = None,
 ) -> dict:
     """Generate an explanation and key terms for the given text.
@@ -34,19 +35,21 @@ async def generate_explanation(
     Returns a dict with keys "explanation" (str) and "key_terms" (list[str]).
     """
     system_prompt = (
-        "You are an expert explainer. Your job is to generate clear, concise, "
-        "and accurate explanations. When explaining a concept, also identify 3-5 "
-        "key terms from your explanation that the reader might want to explore "
-        "further. Return your response as JSON with two keys: "
-        '"explanation" (string) and "key_terms" (array of strings).'
+        "You are a knowledgeable AI assistant. Provide clear, helpful, and accurate "
+        "responses to any question or topic. Also identify 3-5 related topics or key "
+        "terms the reader might want to explore further. If no meaningful related "
+        "topics exist, return an empty array. Return your response as JSON with two keys: "
+        '"explanation" (string, markdown) and "key_terms" (array of strings).'
     )
 
-    user_parts: list[str] = [f"Please explain: {text}"]
+    user_parts: list[str] = [text]
     if context:
         user_parts.append(f"Additional context: {context}")
-    if parent_explanation:
+    if parent_text and parent_explanation:
         user_parts.append(
-            f"This is a deeper exploration. The parent explanation was:\n{parent_explanation}"
+            f'The user previously asked: "{parent_text}"\n\n'
+            f"The response was:\n{parent_explanation}\n\n"
+            f"Now they want to explore further."
         )
 
     user_prompt = "\n\n".join(user_parts)

@@ -31,7 +31,7 @@ export function ExplainTreeSidebar() {
             <ExplainTreeNode node={tree} />
           ) : (
             <p className="px-2 py-4 text-sm text-muted-foreground text-center">
-              Enter a concept to start exploring.
+              Ask a question to get started.
             </p>
           )}
         </div>

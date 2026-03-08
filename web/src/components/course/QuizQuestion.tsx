@@ -8,6 +8,7 @@ import {
   CardContent,
 } from "@/components/ui/card"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Markdown } from "@/components/ui/markdown"
 import { cn } from "@/lib/utils"
 
 interface QuizQuestionProps {
@@ -31,7 +32,7 @@ export function QuizQuestion({ question, courseId }: QuizQuestionProps) {
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-base font-medium">
-          {question.question}
+          <Markdown>{question.question}</Markdown>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -55,7 +56,7 @@ export function QuizQuestion({ question, courseId }: QuizQuestionProps) {
                 )}
               >
                 <RadioGroupItem value={String(index)} />
-                <span className="flex-1 text-sm">{option}</span>
+                <span className="flex-1 text-sm"><Markdown>{option}</Markdown></span>
                 {hasAnswered && isCorrectOption && (
                   <CheckCircle2 className="h-4 w-4 text-green-600" />
                 )}
@@ -79,7 +80,7 @@ export function QuizQuestion({ question, courseId }: QuizQuestionProps) {
             <span className="font-medium">
               {isCorrect ? "Correct!" : "Incorrect."}
             </span>{" "}
-            {question.explanation}
+            <Markdown>{question.explanation}</Markdown>
           </div>
         )}
       </CardContent>

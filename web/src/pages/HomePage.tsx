@@ -42,17 +42,17 @@ export function HomePage() {
               </div>
               <GitBranch className="h-4 w-4 text-muted-foreground" />
             </div>
-            <CardTitle>Explanation Explorer</CardTitle>
+            <CardTitle>Knowledge Explorer</CardTitle>
             <CardDescription>
-              Dive into any topic and branch out through related concepts. Each
-              explanation links to deeper sub-topics, creating a DFS-like
-              exploration tree you control.
+              Ask any question and branch out through related topics. Each
+              response links to deeper follow-ups, creating an exploration
+              tree you control.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <ul className="text-sm text-muted-foreground space-y-1.5">
-              <li>Branching, depth-first exploration</li>
-              <li>Follow-up questions at every node</li>
+              <li>Ask anything, explore any topic</li>
+              <li>Branch into follow-up questions</li>
               <li>Visual tree sidebar for navigation</li>
             </ul>
           </CardContent>

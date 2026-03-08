@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useNavigate } from "react-router"
-import { Loader2, Search } from "lucide-react"
+import { Loader2, Send } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -39,16 +39,16 @@ export function ExplainInputBar({ className }: ExplainInputBarProps) {
       <Input
         value={text}
         onChange={(e) => setText(e.target.value)}
-        placeholder="Enter a concept to explain..."
+        placeholder="Ask anything..."
         disabled={loading}
       />
       <Button type="submit" disabled={loading || !text.trim()}>
         {loading ? (
           <Loader2 className="h-4 w-4 animate-spin" />
         ) : (
-          <Search className="h-4 w-4" />
+          <Send className="h-4 w-4" />
         )}
-        Explain
+        Ask
       </Button>
     </form>
   )

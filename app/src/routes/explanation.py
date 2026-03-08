@@ -29,16 +29,19 @@ router = APIRouter(prefix="/api/explain", tags=["explanations"])
 @router.post("", response_model=ExplanationResponse)
 async def create_explanation(request: ExplanationRequest) -> ExplanationResponse:
     """Generate a new explanation for the given text."""
+    parent_text: str | None = None
     parent_explanation: str | None = None
     if request.parent_id:
         parent = get_explanation(request.parent_id)
         if parent is None:
             raise HTTPException(status_code=404, detail="Parent explanation not found")
+        parent_text = parent.text
         parent_explanation = parent.explanation
 
     result = await generate_explanation(
         text=request.text,
         context=request.context,
+        parent_text=parent_text,
         parent_explanation=parent_explanation,
     )
 

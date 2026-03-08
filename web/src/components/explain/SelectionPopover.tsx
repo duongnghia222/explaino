@@ -134,7 +134,7 @@ export function SelectionPopover({
           ) : (
             <Sparkles className="h-3 w-3" />
           )}
-          Explain "{popover.text.length > 30 ? popover.text.slice(0, 30) + "..." : popover.text}"
+          Tell me about "{popover.text.length > 30 ? popover.text.slice(0, 30) + "..." : popover.text}"
         </Button>
       </div>
     </div>
