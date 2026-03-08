@@ -37,7 +37,5 @@ class NormalCourseState(BaseCourseState, total=False):
 
 
 class AdvancedCourseState(BaseCourseState, total=False):
-    research_queries: list[str]
-    search_results: Annotated[list, operator.add]
     source_index: list[dict[str, Any]]
     research_context: str

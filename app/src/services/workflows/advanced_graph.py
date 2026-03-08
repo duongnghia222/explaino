@@ -3,17 +3,17 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 from uuid import uuid4
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import END, START, StateGraph
-from langgraph.types import Send
 
 from src.models.course import ContentBlock
-from src.models.llm_responses import AdvancedCoursePlanResponse, ResearchPlanResponse
+from src.models.llm_responses import AdvancedCoursePlanResponse
 from src.services.ai_client import AIServiceError, chat_model
-from src.services.search_service import web_search
+from src.services.workflows.deep_research.deep_researcher import deep_researcher
 
 from .state import AdvancedCourseState, report_progress
 
@@ -23,88 +23,53 @@ logger = logging.getLogger(__name__)
 # ── Nodes ────────────────────────────────────────────────────────────────
 
 
-async def generate_research_plan(state: AdvancedCourseState) -> dict[str, Any]:
-    await report_progress(state, "planning", "Creating research plan...", 5)
+async def deep_research(state: AdvancedCourseState) -> dict[str, Any]:
+    """Run the deep research workflow and extract research context + sources."""
+    await report_progress(state, "researching", "Running deep research...", 5)
 
-    system_prompt = (
-        "You are a research planner. Given a topic, generate 4-6 specific search queries "
-        "that would help create a comprehensive, expert-level course. Respond in JSON format.\n\n"
-        "Make queries specific and varied - cover fundamentals, recent developments, "
-        "key debates, practical applications, and advanced concepts."
+    topic = state["topic"]
+    result = await deep_researcher.ainvoke(
+        {"messages": [HumanMessage(content=topic)]},
+        config={"configurable": {"allow_clarification": False}},
     )
 
-    try:
-        structured = chat_model.with_structured_output(
-            ResearchPlanResponse, method="json_mode"
-        )
-        result = await structured.ainvoke(
-            [
-                SystemMessage(content=system_prompt),
-                HumanMessage(content=f"Generate research queries for a course about: {state['topic']}"),
-            ],
-            config={"configurable": {"temperature": 0.5}},
-        )
+    final_report: str = result.get("final_report", "")
 
-        queries = result.queries if result.queries else [state["topic"]]
+    await report_progress(state, "researching", "Processing research results...", 40)
 
-        await report_progress(state, "researching", "Searching for sources...", 15)
-        return {"research_queries": queries}
-
-    except Exception as exc:
-        logger.warning("Research plan generation failed: %s", exc)
-        topic = state["topic"]
-        return {
-            "research_queries": [
-                topic,
-                f"{topic} recent developments",
-                f"{topic} expert analysis",
-            ]
-        }
-
-
-async def execute_search(state: AdvancedCourseState) -> dict[str, Any]:
-    """Execute a single web search query."""
-    query: str = state["_query"]  # type: ignore[typeddict-item]
-    results = await web_search(query)
-    return {
-        "search_results": [
-            {
-                "query": query,
-                "results": [
-                    {"title": r.title, "url": r.url, "snippet": r.snippet}
-                    for r in results
-                ],
-            }
-        ]
-    }
-
-
-async def build_context(state: AdvancedCourseState) -> dict[str, Any]:
-    total_sources = sum(len(sr["results"]) for sr in state["search_results"])
-    await report_progress(
-        state, "researching", f"Found {total_sources} sources. Analyzing...", 40
-    )
-
+    # Parse sources from the report's Sources/References section
     source_index: list[dict[str, Any]] = []
-    research_text_parts: list[str] = []
-
-    for sr in state["search_results"]:
-        research_text_parts.append(f"\n### Research for: {sr['query']}")
-        for r in sr["results"]:
+    sources_pattern = re.compile(
+        r"(?:^|\n)##?\s*(?:Sources|References)\s*\n(.*)",
+        re.DOTALL | re.IGNORECASE,
+    )
+    sources_match = sources_pattern.search(final_report)
+    if sources_match:
+        sources_text = sources_match.group(1)
+        # Match lines like: - [Title](url) or [N] Title - url or numbered/bulleted entries with URLs
+        url_pattern = re.compile(
+            r"(?:\[([^\]]*)\]\((https?://[^\)]+)\))"  # markdown link [title](url)
+            r"|"
+            r"(https?://\S+)",  # bare URL
+        )
+        for match in url_pattern.finditer(sources_text):
             idx = len(source_index) + 1
+            if match.group(1) and match.group(2):
+                title = match.group(1)
+                url = match.group(2)
+            else:
+                url = match.group(3)
+                title = url
             source_index.append({
                 "index": idx,
-                "title": r["title"],
-                "url": r["url"],
-                "snippet": r["snippet"],
+                "title": title,
+                "url": url,
+                "snippet": "",
             })
-            research_text_parts.append(
-                f"[{idx}] {r['title']} ({r['url']})\n{r['snippet']}"
-            )
 
     return {
         "source_index": source_index,
-        "research_context": "\n".join(research_text_parts),
+        "research_context": final_report,
     }
 
 
@@ -198,29 +163,15 @@ async def assemble_course(state: AdvancedCourseState) -> dict[str, Any]:
     }
 
 
-# ── Conditional edges ────────────────────────────────────────────────────
-
-
-def fan_out_searches(state: AdvancedCourseState) -> list[Send]:
-    return [
-        Send("execute_search", {**state, "_query": q})
-        for q in state["research_queries"]
-    ]
-
-
 # ── Graph ────────────────────────────────────────────────────────────────
 
 builder = StateGraph(AdvancedCourseState)
-builder.add_node("generate_research_plan", generate_research_plan)
-builder.add_node("execute_search", execute_search)
-builder.add_node("build_context", build_context)
+builder.add_node("deep_research", deep_research)
 builder.add_node("synthesize_course", synthesize_course)
 builder.add_node("assemble_course", assemble_course)
 
-builder.add_edge(START, "generate_research_plan")
-builder.add_conditional_edges("generate_research_plan", fan_out_searches, ["execute_search"])
-builder.add_edge("execute_search", "build_context")
-builder.add_edge("build_context", "synthesize_course")
+builder.add_edge(START, "deep_research")
+builder.add_edge("deep_research", "synthesize_course")
 builder.add_edge("synthesize_course", "assemble_course")
 builder.add_edge("assemble_course", END)
 

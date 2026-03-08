@@ -8,9 +8,9 @@ from __future__ import annotations
 import logging
 from typing import Callable, Awaitable
 
-from src.services.generators.kids_graph import generate_kids_course
-from src.services.generators.normal_graph import generate_normal_course
-from src.services.generators.advanced_graph import generate_advanced_course
+from src.services.workflows.kids_graph import generate_kids_course
+from src.services.workflows.normal_graph import generate_normal_course
+from src.services.workflows.advanced_graph import generate_advanced_course
 
 logger = logging.getLogger(__name__)
 
