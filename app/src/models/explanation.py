@@ -3,23 +3,45 @@ Explanation Data Models
 Pydantic models for explanation requests and responses
 """
 
-# TODO: Implement Pydantic models
-# - ExplanationRequest: Input model for explanation generation
-#   - text: str (text to explain)
-#   - context: Optional[str] (additional context)
-#   - parent_id: Optional[str] (parent explanation ID for nested explanations)
-#
-# - ExplanationResponse: Output model for generated explanations
-#   - id: str (unique explanation ID)
-#   - text: str (original text)
-#   - explanation: str (AI-generated explanation)
-#   - parent_id: Optional[str]
-#   - created_at: datetime
-#
-# - ExplanationNode: Model for tree structure
-#   - id: str
-#   - text: str
-#   - explanation: str
-#   - parent_id: Optional[str]
-#   - children: List[ExplanationNode]
-#   - depth: int
+from __future__ import annotations
+
+from datetime import datetime
+
+from pydantic import BaseModel
+
+
+class ExplanationRequest(BaseModel):
+    text: str
+    context: str | None = None
+    parent_id: str | None = None
+
+
+class ExplanationRecord(BaseModel):
+    id: str
+    text: str
+    explanation: str
+    key_terms: list[str]
+    parent_id: str | None = None
+    created_at: datetime
+
+
+class ExplanationResponse(BaseModel):
+    id: str
+    text: str
+    explanation: str
+    key_terms: list[str]
+    parent_id: str | None = None
+    created_at: datetime
+
+
+class ExplanationNode(BaseModel):
+    id: str
+    text: str
+    explanation: str
+    key_terms: list[str]
+    parent_id: str | None = None
+    children: list[ExplanationNode] = []
+    depth: int = 0
+
+
+ExplanationNode.model_rebuild()
