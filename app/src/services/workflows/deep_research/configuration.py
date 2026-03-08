@@ -32,7 +32,7 @@ class Configuration(BaseModel):
             }
         }
     )
-max_concurrent_research_units: int = Field(
+    max_concurrent_research_units: int = Field(
         default=5,
         metadata={
             "x_oap_ui_config": {

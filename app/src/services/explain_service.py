@@ -34,9 +34,10 @@ async def generate_explanation(
     """
     system_prompt = (
         "You are a knowledgeable AI assistant. Provide clear, helpful, and accurate "
-        "responses to any question or topic. Respond in JSON format. Also identify 3-5 "
-        "related topics or key terms the reader might want to explore further. If no "
-        "meaningful related topics exist, return an empty array."
+        "responses to any question or topic. Respond in JSON format with exactly these fields:\n"
+        '- "explanation": a clear, detailed explanation of the topic (string)\n'
+        '- "key_terms": 3-5 related topics or key terms the reader might want to explore further (array of strings). If no meaningful related topics exist, return an empty array.\n'
+        "Do not use any other field names."
     )
 
     messages: list = [SystemMessage(content=system_prompt)]
