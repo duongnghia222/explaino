@@ -30,7 +30,7 @@ async def deep_research(state: AdvancedCourseState) -> dict[str, Any]:
     topic = state["topic"]
     result = await deep_researcher.ainvoke(
         {"messages": [HumanMessage(content=topic)]},
-        config={"configurable": {"allow_clarification": False}},
+        config={},
     )
 
     final_report: str = result.get("final_report", "")

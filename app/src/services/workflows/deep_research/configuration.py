@@ -2,7 +2,7 @@
 
 import os
 from enum import Enum
-from typing import Any, List, Optional
+from typing import Any, Optional
 
 from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel, Field
@@ -15,25 +15,6 @@ class SearchAPI(Enum):
     OPENAI = "openai"
     TAVILY = "tavily"
     NONE = "none"
-
-class MCPConfig(BaseModel):
-    """Configuration for Model Context Protocol (MCP) servers."""
-    
-    url: Optional[str] = Field(
-        default=None,
-        optional=True,
-    )
-    """The URL of the MCP server"""
-    tools: Optional[List[str]] = Field(
-        default=None,
-        optional=True,
-    )
-    """The tools to make available to the LLM"""
-    auth_required: Optional[bool] = Field(
-        default=False,
-        optional=True,
-    )
-    """Whether the MCP server requires authentication"""
 
 class Configuration(BaseModel):
     """Main configuration class for the Deep Research agent."""
@@ -51,17 +32,7 @@ class Configuration(BaseModel):
             }
         }
     )
-    allow_clarification: bool = Field(
-        default=True,
-        metadata={
-            "x_oap_ui_config": {
-                "type": "boolean",
-                "default": True,
-                "description": "Whether to allow the researcher to ask the user clarifying questions before starting research"
-            }
-        }
-    )
-    max_concurrent_research_units: int = Field(
+max_concurrent_research_units: int = Field(
         default=5,
         metadata={
             "x_oap_ui_config": {
@@ -210,29 +181,16 @@ class Configuration(BaseModel):
             }
         }
     )
-    # MCP server configuration
-    mcp_config: Optional[MCPConfig] = Field(
+    openai_base_url: Optional[str] = Field(
         default=None,
-        optional=True,
-        metadata={
-            "x_oap_ui_config": {
-                "type": "mcp",
-                "description": "MCP server configuration"
-            }
-        }
-    )
-    mcp_prompt: Optional[str] = Field(
-        default=None,
-        optional=True,
         metadata={
             "x_oap_ui_config": {
                 "type": "text",
-                "description": "Any additional instructions to pass along to the Agent regarding the MCP tools that are available to it."
+                "default": None,
+                "description": "Custom base URL for OpenAI-compatible API providers (e.g. https://openrouter.ai/api/v1)"
             }
         }
     )
-
-
     @classmethod
     def from_runnable_config(
         cls, config: Optional[RunnableConfig] = None
