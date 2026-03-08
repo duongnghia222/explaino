@@ -29,6 +29,20 @@ def get_children(parent_id: str) -> list[ExplanationRecord]:
     return [_explanations[cid] for cid in child_ids if cid in _explanations]
 
 
+def get_ancestor_chain(id: str) -> list[ExplanationRecord]:
+    """Walk up the parent chain and return ancestors from root to the given node."""
+    chain: list[ExplanationRecord] = []
+    current_id: str | None = id
+    while current_id:
+        record = _explanations.get(current_id)
+        if record is None:
+            break
+        chain.append(record)
+        current_id = record.parent_id
+    chain.reverse()
+    return chain
+
+
 def get_root_id(id: str) -> str:
     """Walk up the parent chain to find the root explanation ID."""
     current_id = id
@@ -58,6 +72,7 @@ def build_tree(node_id: str, depth: int = 0) -> ExplanationNode | None:
         explanation=record.explanation,
         key_terms=record.key_terms,
         parent_id=record.parent_id,
+        is_follow_up=record.is_follow_up,
         children=children_nodes,
         depth=depth,
     )

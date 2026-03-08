@@ -17,6 +17,7 @@ from src.models.explanation import (
 from src.services.ai_service import generate_explanation
 from src.services.storage import (
     build_tree,
+    get_ancestor_chain,
     get_children,
     get_explanation,
     get_root_id,
@@ -29,20 +30,21 @@ router = APIRouter(prefix="/api/explain", tags=["explanations"])
 @router.post("", response_model=ExplanationResponse)
 async def create_explanation(request: ExplanationRequest) -> ExplanationResponse:
     """Generate a new explanation for the given text."""
-    parent_text: str | None = None
-    parent_explanation: str | None = None
+    thread: list[dict[str, str]] | None = None
     if request.parent_id:
         parent = get_explanation(request.parent_id)
         if parent is None:
             raise HTTPException(status_code=404, detail="Parent explanation not found")
-        parent_text = parent.text
-        parent_explanation = parent.explanation
+        # Build full conversation thread from root to parent
+        ancestors = get_ancestor_chain(request.parent_id)
+        thread = [
+            {"text": a.text, "explanation": a.explanation}
+            for a in ancestors
+        ]
 
     result = await generate_explanation(
         text=request.text,
-        context=request.context,
-        parent_text=parent_text,
-        parent_explanation=parent_explanation,
+        thread=thread,
     )
 
     record = ExplanationRecord(
@@ -51,6 +53,7 @@ async def create_explanation(request: ExplanationRequest) -> ExplanationResponse
         explanation=result["explanation"],
         key_terms=result["key_terms"],
         parent_id=request.parent_id,
+        is_follow_up=request.is_follow_up,
         created_at=datetime.now(timezone.utc),
     )
     save_explanation(record)

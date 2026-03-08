@@ -10,7 +10,7 @@ interface ExplainState {
   loading: boolean
   error: string | null
   startNewExplanation: (text: string) => Promise<string>
-  exploreTerm: (term: string, parentId: string) => Promise<string>
+  exploreTerm: (term: string, parentId: string, isFollowUp?: boolean) => Promise<string>
   setActiveNode: (id: string) => void
   loadTree: (nodeId: string) => Promise<void>
   getAncestorPath: (nodeId: string) => ExplainNode[]
@@ -42,6 +42,7 @@ export const useExplainStore = create<ExplainState>((set, get) => ({
         explanation: res.explanation,
         key_terms: res.key_terms,
         parent_id: null,
+        is_follow_up: false,
         children: [],
         depth: 0,
       }
@@ -59,14 +60,13 @@ export const useExplainStore = create<ExplainState>((set, get) => ({
     }
   },
 
-  exploreTerm: async (term: string, parentId: string) => {
+  exploreTerm: async (term: string, parentId: string, isFollowUp = false) => {
     set({ loading: true, error: null })
     try {
-      const parent = get().nodes[parentId]
       const res = await postExplain({
         text: term,
-        context: parent?.explanation,
         parent_id: parentId,
+        is_follow_up: isFollowUp,
       })
       // Reload the full tree
       const rootId = get().rootId!

@@ -12,8 +12,8 @@ from pydantic import BaseModel
 
 class ExplanationRequest(BaseModel):
     text: str
-    context: str | None = None
     parent_id: str | None = None
+    is_follow_up: bool = False
 
 
 class ExplanationRecord(BaseModel):
@@ -22,6 +22,7 @@ class ExplanationRecord(BaseModel):
     explanation: str
     key_terms: list[str]
     parent_id: str | None = None
+    is_follow_up: bool = False
     created_at: datetime
 
 
@@ -31,6 +32,7 @@ class ExplanationResponse(BaseModel):
     explanation: str
     key_terms: list[str]
     parent_id: str | None = None
+    is_follow_up: bool = False
     created_at: datetime
 
 
@@ -40,6 +42,7 @@ class ExplanationNode(BaseModel):
     explanation: str
     key_terms: list[str]
     parent_id: str | None = None
+    is_follow_up: bool = False
     children: list[ExplanationNode] = []
     depth: int = 0
 

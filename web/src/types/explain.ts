@@ -1,7 +1,7 @@
 export interface ExplainRequest {
   text: string
-  context?: string
   parent_id?: string
+  is_follow_up?: boolean
 }
 
 export interface ExplainResponse {
@@ -10,6 +10,7 @@ export interface ExplainResponse {
   explanation: string
   key_terms: string[]
   parent_id: string | null
+  is_follow_up: boolean
   created_at: string
 }
 
@@ -19,6 +20,7 @@ export interface ExplainNode {
   explanation: string
   key_terms: string[]
   parent_id: string | null
+  is_follow_up: boolean
   children: ExplainNode[]
   depth: number
 }

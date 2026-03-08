@@ -6,18 +6,21 @@ import { SelectionPopover } from "./SelectionPopover"
 
 interface ExplainContentProps {
   node: ExplainNode
+  isActive?: boolean
 }
 
-export function ExplainContent({ node }: ExplainContentProps) {
+export function ExplainContent({ node, isActive }: ExplainContentProps) {
   const explanationRef = useRef<HTMLDivElement>(null)
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold">{node.text}</h2>
+    <div className={isActive ? "space-y-4" : "space-y-4 opacity-80"}>
+      <h2 className="text-lg font-semibold text-muted-foreground">{node.text}</h2>
 
       <div ref={explanationRef} className="relative text-base leading-relaxed">
         <Markdown>{node.explanation}</Markdown>
-        <SelectionPopover containerRef={explanationRef} parentId={node.id} />
+        {isActive && (
+          <SelectionPopover containerRef={explanationRef} parentId={node.id} />
+        )}
       </div>
     </div>
   )

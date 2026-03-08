@@ -26,11 +26,14 @@ class AIServiceError(Exception):
 
 async def generate_explanation(
     text: str,
-    context: str | None = None,
-    parent_text: str | None = None,
-    parent_explanation: str | None = None,
+    thread: list[dict[str, str]] | None = None,
 ) -> dict:
     """Generate an explanation and key terms for the given text.
+
+    Args:
+        text: The current question / term to explain.
+        thread: Prior conversation turns (oldest first). Each dict has
+                "text" (user question) and "explanation" (assistant answer).
 
     Returns a dict with keys "explanation" (str) and "key_terms" (list[str]).
     """
@@ -42,25 +45,21 @@ async def generate_explanation(
         '"explanation" (string, markdown) and "key_terms" (array of strings).'
     )
 
-    user_parts: list[str] = [text]
-    if context:
-        user_parts.append(f"Additional context: {context}")
-    if parent_text and parent_explanation:
-        user_parts.append(
-            f'The user previously asked: "{parent_text}"\n\n'
-            f"The response was:\n{parent_explanation}\n\n"
-            f"Now they want to explore further."
-        )
+    messages: list[dict[str, str]] = [{"role": "system", "content": system_prompt}]
 
-    user_prompt = "\n\n".join(user_parts)
+    # Replay the full conversation thread so the model has context
+    if thread:
+        for turn in thread:
+            messages.append({"role": "user", "content": turn["text"]})
+            messages.append({"role": "assistant", "content": turn["explanation"]})
+
+    # Current question
+    messages.append({"role": "user", "content": text})
 
     try:
         response = await _client.chat.completions.create(
             model=settings.openrouter_model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
+            messages=messages,
             response_format={"type": "json_object"},
             temperature=0.7,
         )
