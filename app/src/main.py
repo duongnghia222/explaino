@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 from src.config import settings
 from src.routes.course import router as course_router
 from src.routes.explanation import router as explanation_router
-from src.services.ai_service import AIServiceError
+from src.services.ai_client import AIServiceError
 
 app = FastAPI(title="Explaino API")
 

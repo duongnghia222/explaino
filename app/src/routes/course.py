@@ -16,8 +16,8 @@ from src.models.course import (
     LessonResponse,
     QuizQuestion,
 )
-from src.services.ai_service import generate_course
-from src.services.storage import get_all_courses, get_course, save_course
+from src.services.course_service import generate_course
+from src.services.course_storage import get_all_courses, get_course, save_course
 
 router = APIRouter(prefix="/api/courses", tags=["courses"])
 
