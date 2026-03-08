@@ -3,15 +3,20 @@ Course API Routes
 Endpoints for course generation and retrieval
 """
 
+from __future__ import annotations
+
+import logging
 from datetime import datetime, timezone
 from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException
-
 from src.models.course import (
+    Citation,
+    ContentBlock,
     CourseRecord,
     CourseRequest,
     CourseResponse,
+    ImageBlock,
     Lesson,
     LessonResponse,
     QuizQuestion,
@@ -19,14 +24,13 @@ from src.models.course import (
 from src.services.course_service import generate_course
 from src.services.course_storage import get_all_courses, get_course, save_course
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/api/courses", tags=["courses"])
 
 
-@router.post("", response_model=CourseResponse)
-async def create_course(request: CourseRequest) -> CourseResponse:
-    """Generate a new course on the given topic."""
-    result = await generate_course(topic=request.topic, mode=request.mode.value)
-
+def _build_record(request: CourseRequest, result: dict) -> CourseRecord:
+    """Build a CourseRecord from the raw generator result."""
     lessons = []
     for lesson_data in result["lessons"]:
         quiz_questions = []
@@ -40,17 +44,34 @@ async def create_course(request: CourseRequest) -> CourseResponse:
                     explanation=q["explanation"],
                 )
             )
+
+        content_blocks = []
+        for cb in lesson_data.get("content_blocks", []):
+            if isinstance(cb, dict):
+                content_blocks.append(ContentBlock(**cb))
+            elif isinstance(cb, ContentBlock):
+                content_blocks.append(cb)
+
+        citations = []
+        for c in lesson_data.get("citations", []):
+            if isinstance(c, dict):
+                citations.append(Citation(**c))
+            elif isinstance(c, Citation):
+                citations.append(c)
+
         lessons.append(
             Lesson(
                 id=str(uuid4()),
                 title=lesson_data["title"],
-                content=lesson_data["content"],
+                content=lesson_data.get("content", ""),
+                content_blocks=content_blocks,
+                citations=citations,
                 key_points=lesson_data.get("key_points", []),
                 quiz=quiz_questions,
             )
         )
 
-    record = CourseRecord(
+    return CourseRecord(
         id=str(uuid4()),
         topic=request.topic,
         mode=request.mode,
@@ -59,8 +80,14 @@ async def create_course(request: CourseRequest) -> CourseResponse:
         lessons=lessons,
         created_at=datetime.now(timezone.utc),
     )
-    save_course(record)
 
+
+@router.post("", response_model=CourseResponse)
+async def create_course(request: CourseRequest) -> CourseResponse:
+    """Generate a new course on the given topic (non-streaming)."""
+    result = await generate_course(topic=request.topic, mode=request.mode.value)
+    record = _build_record(request, result)
+    save_course(record)
     return CourseResponse(**record.model_dump())
 
 

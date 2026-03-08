@@ -13,10 +13,33 @@ export interface QuizQuestion {
   explanation: string
 }
 
+export interface ImageBlock {
+  id: string
+  url: string | null
+  alt_text: string
+  prompt: string
+  placeholder: boolean
+}
+
+export interface Citation {
+  id: string
+  title: string
+  url: string
+  snippet: string
+}
+
+export interface ContentBlock {
+  type: "text" | "image"
+  text?: string | null
+  image?: ImageBlock | null
+}
+
 export interface LessonResponse {
   id: string
   title: string
   content: string
+  content_blocks: ContentBlock[]
+  citations: Citation[]
   key_points: string[]
   quiz: QuizQuestion[]
 }

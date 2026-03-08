@@ -14,10 +14,30 @@ import {
 } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 
-const modes: { value: CourseMode; label: string; icon: typeof Baby }[] = [
-  { value: "kids", label: "Kids", icon: Baby },
-  { value: "normal", label: "Normal", icon: User },
-  { value: "advanced", label: "Advanced", icon: Microscope },
+const modes: {
+  value: CourseMode
+  label: string
+  icon: typeof Baby
+  description: string
+}[] = [
+  {
+    value: "kids",
+    label: "Kids",
+    icon: Baby,
+    description: "Visual storybook style with lots of images",
+  },
+  {
+    value: "normal",
+    label: "Normal",
+    icon: User,
+    description: "University-level with occasional illustrations",
+  },
+  {
+    value: "advanced",
+    label: "Advanced",
+    icon: Microscope,
+    description: "Deep research with citations and sources",
+  },
 ]
 
 export function CourseGeneratorForm() {
@@ -60,7 +80,7 @@ export function CourseGeneratorForm() {
           <div className="space-y-2">
             <label className="text-sm font-medium">Mode</label>
             <div className="grid grid-cols-3 gap-2">
-              {modes.map(({ value, label, icon: Icon }) => (
+              {modes.map(({ value, label, icon: Icon, description }) => (
                 <button
                   key={value}
                   type="button"
@@ -74,6 +94,9 @@ export function CourseGeneratorForm() {
                 >
                   <Icon className="h-5 w-5" />
                   {label}
+                  <span className="text-[10px] font-normal text-muted-foreground text-center leading-tight">
+                    {description}
+                  </span>
                 </button>
               ))}
             </div>

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
+from typing import Literal
 
 from pydantic import BaseModel
 
@@ -30,10 +31,33 @@ class QuizQuestion(BaseModel):
     explanation: str
 
 
+class ImageBlock(BaseModel):
+    id: str
+    url: str | None = None
+    alt_text: str
+    prompt: str
+    placeholder: bool = True
+
+
+class Citation(BaseModel):
+    id: str
+    title: str
+    url: str
+    snippet: str
+
+
+class ContentBlock(BaseModel):
+    type: Literal["text", "image"]
+    text: str | None = None
+    image: ImageBlock | None = None
+
+
 class Lesson(BaseModel):
     id: str
     title: str
     content: str
+    content_blocks: list[ContentBlock] = []
+    citations: list[Citation] = []
     key_points: list[str]
     quiz: list[QuizQuestion]
 
@@ -62,5 +86,7 @@ class LessonResponse(BaseModel):
     id: str
     title: str
     content: str
+    content_blocks: list[ContentBlock] = []
+    citations: list[Citation] = []
     key_points: list[str]
     quiz: list[QuizQuestion]

@@ -3,18 +3,26 @@ import { useParams } from "react-router"
 import { useCourseStore } from "@/store/useCourseStore"
 import { LessonSidebar } from "@/components/course/LessonSidebar"
 import { LessonContent } from "@/components/course/LessonContent"
+import { KidsLessonContent } from "@/components/course/KidsLessonContent"
+import { AdvancedLessonContent } from "@/components/course/AdvancedLessonContent"
 import { Skeleton } from "@/components/ui/skeleton"
 
 export function CourseViewerPage() {
   const { courseId } = useParams()
-  const { courses, loadCourse, loading } = useCourseStore()
+  const { courses, loadCourse, loading, activeLessonId, setActiveCourse } = useCourseStore()
   const course = courseId ? courses[courseId] : undefined
 
   useEffect(() => {
     if (courseId && !course) {
       loadCourse(courseId).catch(() => {})
+    } else if (courseId && course) {
+      // Ensure activeLessonId is set to a lesson in this course
+      const hasValidLesson = course.lessons.some((l) => l.id === activeLessonId)
+      if (!hasValidLesson) {
+        setActiveCourse(courseId)
+      }
     }
-  }, [courseId, course, loadCourse])
+  }, [courseId, course, loadCourse, activeLessonId, setActiveCourse])
 
   if (loading && !course) {
     return (
@@ -41,10 +49,21 @@ export function CourseViewerPage() {
     )
   }
 
+  const renderContent = () => {
+    switch (course.mode) {
+      case "kids":
+        return <KidsLessonContent course={course} />
+      case "advanced":
+        return <AdvancedLessonContent course={course} />
+      default:
+        return <LessonContent course={course} />
+    }
+  }
+
   return (
     <div className="flex h-[calc(100vh-3.5rem)]">
       <LessonSidebar course={course} />
-      <LessonContent course={course} />
+      {renderContent()}
     </div>
   )
 }

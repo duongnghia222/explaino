@@ -1,18 +1,20 @@
-import { CheckCircle2 } from "lucide-react"
+import { CheckCircle2, BookOpen } from "lucide-react"
 import type { CourseResponse } from "@/types/course"
 import { useCourseStore } from "@/store/useCourseStore"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
+import { Badge } from "@/components/ui/badge"
 import { Markdown } from "@/components/ui/markdown"
 import { ContentBlockRenderer } from "./ContentBlockRenderer"
+import { CitationList } from "./CitationList"
 import { LessonQuiz } from "./LessonQuiz"
 
-interface LessonContentProps {
+interface AdvancedLessonContentProps {
   course: CourseResponse
 }
 
-export function LessonContent({ course }: LessonContentProps) {
+export function AdvancedLessonContent({ course }: AdvancedLessonContentProps) {
   const { activeLessonId, completedLessons, markLessonCompleted } =
     useCourseStore()
 
@@ -28,12 +30,19 @@ export function LessonContent({ course }: LessonContentProps) {
 
   const completed = completedLessons[course.id]?.has(lesson.id) ?? false
   const hasContentBlocks = lesson.content_blocks.length > 0
+  const hasCitations = lesson.citations.length > 0
 
   return (
     <ScrollArea className="flex-1">
       <div className="mx-auto max-w-3xl space-y-8 p-8">
-        <div>
+        <div className="flex items-start justify-between gap-4">
           <h1 className="text-3xl font-bold tracking-tight">{lesson.title}</h1>
+          {hasCitations && (
+            <Badge variant="outline" className="shrink-0 gap-1">
+              <BookOpen className="h-3 w-3" />
+              {lesson.citations.length} sources
+            </Badge>
+          )}
         </div>
 
         {hasContentBlocks ? (
@@ -53,6 +62,13 @@ export function LessonContent({ course }: LessonContentProps) {
               ))}
             </ul>
           </div>
+        )}
+
+        {hasCitations && (
+          <>
+            <Separator />
+            <CitationList citations={lesson.citations} />
+          </>
         )}
 
         {lesson.quiz.length > 0 && (
