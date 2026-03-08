@@ -16,6 +16,7 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "httpx>=0.26.0",
     "sse-starlette>=1.6.0",
+    "langgraph>=0.2.0",
 ]
 
 [project.optional-dependencies]
