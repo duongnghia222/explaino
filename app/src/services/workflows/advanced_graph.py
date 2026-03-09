@@ -33,35 +33,38 @@ async def deep_research(state: AdvancedCourseState) -> dict[str, Any]:
         config={},
     )
 
-    final_report: str = result.get("final_report", "")
-
     await report_progress(state, "researching", "Processing research results...", 40)
 
-    # Parse sources from the report's Sources/References section
+    # Collect compressed researcher notes (bypasses lossy final_report summarization)
+    notes: list[str] = result.get("notes", [])
+    research_context = "\n\n---\n\n".join(notes) if notes else ""
+
+    # Safety truncation to avoid exceeding LLM context limits
+    MAX_RESEARCH_CHARS = 400_000
+    if len(research_context) > MAX_RESEARCH_CHARS:
+        research_context = research_context[:MAX_RESEARCH_CHARS]
+        logger.warning("Research context truncated to %d chars", MAX_RESEARCH_CHARS)
+
+    # Parse sources: scan entire research_context for all markdown URLs
+    # (each researcher has its own sources section)
     source_index: list[dict[str, Any]] = []
-    sources_pattern = re.compile(
-        r"(?:^|\n)##?\s*(?:Sources|References)\s*\n(.*)",
-        re.DOTALL | re.IGNORECASE,
+    url_pattern = re.compile(
+        r"(?:\[([^\]]*)\]\((https?://[^\)]+)\))"  # markdown link [title](url)
+        r"|"
+        r"(https?://\S+)",  # bare URL
     )
-    sources_match = sources_pattern.search(final_report)
-    if sources_match:
-        sources_text = sources_match.group(1)
-        # Match lines like: - [Title](url) or [N] Title - url or numbered/bulleted entries with URLs
-        url_pattern = re.compile(
-            r"(?:\[([^\]]*)\]\((https?://[^\)]+)\))"  # markdown link [title](url)
-            r"|"
-            r"(https?://\S+)",  # bare URL
-        )
-        for match in url_pattern.finditer(sources_text):
-            idx = len(source_index) + 1
-            if match.group(1) and match.group(2):
-                title = match.group(1)
-                url = match.group(2)
-            else:
-                url = match.group(3)
-                title = url
+    seen_urls: set[str] = set()
+    for match in url_pattern.finditer(research_context):
+        if match.group(1) and match.group(2):
+            title = match.group(1)
+            url = match.group(2)
+        else:
+            url = match.group(3)
+            title = url
+        if url not in seen_urls:
+            seen_urls.add(url)
             source_index.append({
-                "index": idx,
+                "index": len(source_index) + 1,
                 "title": title,
                 "url": url,
                 "snippet": "",
@@ -69,7 +72,7 @@ async def deep_research(state: AdvancedCourseState) -> dict[str, Any]:
 
     return {
         "source_index": source_index,
-        "research_context": final_report,
+        "research_context": research_context,
     }
 
 
@@ -107,7 +110,10 @@ async def synthesize_course(state: AdvancedCourseState) -> dict[str, Any]:
                 HumanMessage(
                     content=(
                         f"Create an expert-level course about: {state['topic']}\n\n"
-                        f"## Research Sources\n{state['research_context']}"
+                        f"## Research Findings\n"
+                        f"Below are detailed findings from multiple research threads. "
+                        f"Each section contains in-depth analysis and sources from a different researcher.\n\n"
+                        f"{state['research_context']}"
                     ),
                 ),
             ],

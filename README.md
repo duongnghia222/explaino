@@ -33,7 +33,7 @@ cp app/.env.example app/.env
 make dev
 
 # Or run them separately
-make be   # Backend on http://localhost:8000
+make be   # Backend on http://localhost:8432
 make fe   # Frontend on http://localhost:5173
 ```
 

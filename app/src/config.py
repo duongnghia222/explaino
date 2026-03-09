@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     openrouter_image_model: str = ""
     deep_research_model: str = "perplexity/sonar-deep-research"
     api_host: str = "0.0.0.0"
-    api_port: int = 8000
+    api_port: int = 8432
     cors_origins: str = "http://localhost:5173,http://localhost:3000"
 
     @property

@@ -7,7 +7,7 @@ dev:
 
 # Backend
 be:
-	cd app && uv run uvicorn src.main:app --reload --port 8000
+	cd app && uv run uvicorn src.main:app --reload --port 8432
 
 install-be:
 	cd app && uv sync
