@@ -70,6 +70,8 @@ def build_tree(node_id: str, depth: int = 0) -> ExplanationNode | None:
         key_terms=record.key_terms,
         parent_id=record.parent_id,
         is_follow_up=record.is_follow_up,
+        input_type=record.input_type,
+        source_url=record.source_url,
         children=children_nodes,
         depth=depth,
     )

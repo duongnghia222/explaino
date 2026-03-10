@@ -1,5 +1,5 @@
 import { create } from "zustand"
-import type { ExplainNode } from "@/types/explain"
+import type { ExplainNode, InputType } from "@/types/explain"
 import { postExplain, getExplanationTree } from "@/api/explain"
 
 interface ExplainState {
@@ -9,7 +9,7 @@ interface ExplainState {
   tree: ExplainNode | null
   loading: boolean
   error: string | null
-  startNewExplanation: (text: string) => Promise<string>
+  startNewExplanation: (req: { text: string; url?: string; input_type?: InputType }) => Promise<string>
   exploreTerm: (term: string, parentId: string, isFollowUp?: boolean) => Promise<string>
   setActiveNode: (id: string) => void
   loadTree: (nodeId: string) => Promise<void>
@@ -32,10 +32,14 @@ export const useExplainStore = create<ExplainState>((set, get) => ({
   loading: false,
   error: null,
 
-  startNewExplanation: async (text: string) => {
+  startNewExplanation: async (req) => {
     set({ loading: true, error: null })
     try {
-      const res = await postExplain({ text })
+      const res = await postExplain({
+        text: req.text,
+        url: req.url,
+        input_type: req.input_type,
+      })
       const node: ExplainNode = {
         id: res.id,
         text: res.text,

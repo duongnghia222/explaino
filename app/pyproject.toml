@@ -20,6 +20,9 @@ dependencies = [
     "langchain-openai>=0.3.0",
     "langchain>=1.2.10",
     "tavily-python>=0.7.22",
+    "beautifulsoup4>=4.12.0",
+    "lxml>=5.0.0",
+    "markdownify>=0.13.0",
 ]
 
 [project.optional-dependencies]

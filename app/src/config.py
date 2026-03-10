@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     api_host: str = "0.0.0.0"
     api_port: int = 8432
     cors_origins: str = "http://localhost:5173,http://localhost:3000"
+    max_input_chars: int = 30000
 
     @property
     def cors_origin_list(self) -> list[str]:
